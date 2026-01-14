@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>イナズマイレブンVR RD計算機</title>
+    <style>
+      :root {
+        --primary-color: #3b82f6;
+        --at-color: #ef4444;
+        --df-color: #3b82f6;
+        --bg-color: #f3f4f6;
+        --card-bg: #ffffff;
+        --text-color: #1f2937;
+      }
+      body {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+      }
+      .container {
+        width: 100%;
+        max-width: 800px;
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        padding: 24px;
+      }
+      h1 {
+        text-align: center;
+        font-size: 1.5rem;
+        margin-bottom: 24px;
+        color: #111827;
+      }
+      .mode-selector {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-weight: bold;
+      }
+      .btn.active {
+        background-color: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+      }
+      .calc-area {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+      @media (max-width: 640px) {
+        .calc-area {
+          grid-template-columns: 1fr;
+        }
+      }
+      .side-title {
+        font-weight: bold;
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e5e7eb;
+      }
+      .at-side .side-title {
+        color: var(--at-color);
+        border-color: var(--at-color);
+      }
+      .df-side .side-title {
+        color: var(--df-color);
+        border-color: var(--df-color);
+      }
+
+      .input-group {
+        margin-bottom: 12px;
+      }
+      .input-group label {
+        display: block;
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+        color: #4b5563;
+      }
+      .input-group input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        box-sizing: border-box;
+        font-size: 1rem;
+      }
+      .calculate-btn {
+        width: 100%;
+        padding: 12px;
+        background-color: #10b981;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        margin-bottom: 24px;
+        transition: background-color 0.2s;
+      }
+      .calculate-btn:hover {
+        background-color: #059669;
+      }
+      .result-area {
+        background-color: #f9fafb;
+        padding: 16px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+      }
+      .result-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 1rem;
+      }
+      .result-val {
+        font-family: monospace;
+        font-weight: bold;
+      }
+      .rd-display {
+        font-size: 2rem;
+        text-align: center;
+        font-weight: bold;
+        margin: 16px 0;
+        color: #4f46e5;
+      }
+      .win-rate {
+        text-align: center;
+        font-size: 1.2rem;
+        font-weight: bold;
+      }
+      .hidden {
+        display: none;
+      }
+      .help-text {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-top: 4px;
+      }
+        /* Add styles for tech power buttons */
+        .tech-btn-group {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .tech-btn {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            border: 1px solid #d1d5db;
+            background: #f3f4f6;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .tech-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        .tech-label {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-bottom: 2px;
+        }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>RD計算機 (Beta)</h1>
+
+      <div class="mode-selector">
+        <button class="btn active" onclick="setMode('focus')">
+          フォーカス AT/DF
+        </button>
+        <button class="btn" onclick="setMode('shoot')">
+          シュート/キーパー
+        </button>
+        <button class="btn" onclick="setMode('scramble')">スクランブル</button>
+        <button class="btn" onclick="setMode('direct')">実数値直接入力</button>
+      </div>
+
+      <div class="calc-area">
+        <!-- Attack Side -->
+        <div class="at-side">
+          <div class="side-title">攻撃側 (AT)</div>
+
+          <div id="inputs-at-stats">
+            <!-- Dynamic inputs generated by JS -->
+          </div>
+
+          <div class="input-group" id="at-tech-power-input">
+            <label>技威力</label>
+            <div class="tech-label">ベース威力</div>
+            <div class="tech-btn-group" id="at-base-btns">
+                <!-- 30, 50, 60, 70, 85, 100 -->
+            </div>
+            <div class="tech-label">進化</div>
+            <div class="tech-btn-group" id="at-evo-btns">
+                <!-- 1~6 -->
+            </div>
+            <!-- Hidden inputs to store selection -->
+            <input type="hidden" id="at-base-val" value="0">
+            <input type="hidden" id="at-evo-val" value="1">
+            <input type="number" id="at-tech-power" class="stat-input" value="0" readonly style="background-color: #f9fafb;">
+          </div>
+
+          <div class="input-group">
+            <label>パッシブ補正 (%)</label>
+            <input
+              type="number"
+              id="at-passive"
+              value="0"
+              placeholder="例: 20"
+              oninput="calculateRD()"
+            />
+          </div>
+
+          <div class="input-group hidden" id="at-direct-input">
+            <label>最終実数値</label>
+            <input type="number" id="at-real-value" placeholder="1500" />
+          </div>
+
+          <div class="help-text">計算結果(素点): <span id="at-calc-preview">0</span></div>
+        </div>
+
+        <!-- Defense Side -->
+        <div class="df-side">
+          <div class="side-title">防御側 (DF)</div>
+
+          <div id="inputs-df-stats">
+            <!-- Dynamic inputs generated by JS -->
+          </div>
+
+          <div class="input-group" id="df-tech-power-input">
+            <label>技威力</label>
+            <div class="tech-label">ベース威力</div>
+            <div class="tech-btn-group" id="df-base-btns"></div>
+            <div class="tech-label">進化</div>
+            <div class="tech-btn-group" id="df-evo-btns"></div>
+            
+            <input type="hidden" id="df-base-val" value="0">
+            <input type="hidden" id="df-evo-val" value="1">
+            <input type="number" id="df-tech-power" class="stat-input" value="0" readonly style="background-color: #f9fafb;">
+          </div>
+
+          <div class="input-group">
+            <label>パッシブ補正 (%)</label>
+            <input
+              type="number"
+              id="df-passive"
+              value="0"
+              placeholder="例: 10"
+              oninput="calculateRD()"
+            />
+          </div>
+
+          <div class="input-group hidden" id="df-direct-input">
+            <label>最終実数値</label>
+            <input type="number" id="df-real-value" placeholder="1200" />
+          </div>
+
+          <div class="help-text">計算結果(素点): <span id="df-calc-preview">0</span></div>
+        </div>
+      </div>
+
+      <button class="calculate-btn" onclick="calculateRD()">計算する</button>
+
+      <div class="result-area" id="result-area" style="display: none">
+        <div class="result-row">
+          <span>攻撃側最終値</span>
+          <span class="result-val" id="res-at-total">0</span>
+        </div>
+        <div class="result-row">
+          <span>防御側最終値</span>
+          <span class="result-val" id="res-df-total">0</span>
+        </div>
+
+        <div class="rd-display">RD <span id="res-rd">0.0</span>%</div>
+
+        <div id="win-rate-container">
+            <div class="win-rate" id="res-win-rate">AT勝率: 40%</div>
+            <div style="text-align: center; margin-top: 8px; color: #6b7280;" id="res-judgment">--</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Tech Power Logic provided by user
+    const TECH_DATA = {
+        30: { 1:115, 2:115, 3:115, 4:115, 5:115, 6:115 }, // Assuming fixed based on formula condition
+        50: { 1:175, 2:192, 3:210, 4:227, 5:245, 6:262 },
+        60: { 1:210, 2:231, 3:252, 4:273, 5:294, 6:315 },
+        70: { 1:255, 2:280, 3:306, 4:331, 5:357, 6:382 },
+        85: { 1:312, 2:343, 3:374, 4:405, 5:436, 6:468 },
+        100: { 1:370, 2:407, 3:444, 4:481, 5:518, 6:555 }
+    };
+    
+    // Evolution Labels
+    const EVO_LABELS = {
+        1: "無", 2: "V2/改", 3: "V3/真", 4: "V4/爆", 5: "A/絶", 6: "∞/神"
+    };
+
+    function initTechButtons(side) {
+        const baseContainer = document.getElementById(`${side}-base-btns`);
+        const evoContainer = document.getElementById(`${side}-evo-btns`);
+        
+        // Base Buttons
+        [30, 50, 60, 70, 85, 100].forEach(base => {
+            const btn = document.createElement('div');
+            btn.className = 'tech-btn';
+            btn.textContent = base;
+            btn.onclick = () => selectTechBase(side, base, btn);
+            baseContainer.appendChild(btn);
+        });
+
+        // Evo Buttons
+        [1, 2, 3, 4, 5, 6].forEach(evo => {
+            const btn = document.createElement('div');
+            btn.className = 'tech-btn';
+            btn.textContent = EVO_LABELS[evo];
+            btn.onclick = () => selectTechEvo(side, evo, btn);
+            evoContainer.appendChild(btn);
+        });
+
+        // Set initial active state for default values (0 base, 1 evo)
+        // For base, if 0 is not in the list, none will be active initially.
+        // For evo, '無' (1) should be active by default.
+        const initialEvoBtn = evoContainer.children[0]; // Assuming 1 is the first button
+        if (initialEvoBtn) {
+            initialEvoBtn.classList.add('active');
+        }
+    }
+
+    function selectTechBase(side, base, btnEl) {
+        document.getElementById(`${side}-base-val`).value = base;
+        
+        // Update UI
+        const parent = document.getElementById(`${side}-base-btns`);
+        Array.from(parent.children).forEach(c => c.classList.remove('active'));
+        btnEl.classList.add('active');
+
+        updateTechPower(side);
+    }
+
+    function selectTechEvo(side, evo, btnEl) {
+        document.getElementById(`${side}-evo-val`).value = evo;
+
+        // Update UI
+        const parent = document.getElementById(`${side}-evo-btns`);
+        Array.from(parent.children).forEach(c => c.classList.remove('active'));
+        btnEl.classList.add('active');
+
+        updateTechPower(side);
+    }
+
+    function updateTechPower(side) {
+        const base = parseInt(document.getElementById(`${side}-base-val`).value) || 0;
+        const evo = parseInt(document.getElementById(`${side}-evo-val`).value) || 1;
+        
+        let power = 0;
+        if (base > 0 && TECH_DATA[base]) {
+            power = TECH_DATA[base][evo];
+        }
+
+        document.getElementById(`${side}-tech-power`).value = power;
+        updatePreview(side); // Recalculate everything
+    }
+
+      // Form configurations
+    const MODES = {
+        focus: {
+            name: "フォーカス",
+            at: {
+                label: "フォーカスAT",
+                inputs: [
+                    { id: "at-kick", label: "キック" },
+                    { id: "at-ctrl", label: "コントロール" },
+                    { id: "at-tech", label: "テクニック" }
+                ],
+                formula: (v) => (v['at-kick']/2) + v['at-tech'] + v['at-ctrl']
+            },
+            df: {
+                label: "フォーカスDF",
+                inputs: [
+                    { id: "df-tech", label: "テクニック" },
+                    { id: "df-intel", label: "インテリジェンス" },
+                    { id: "df-agi", label: "アジリティ" }
+                ],
+                formula: (v) => v['df-tech'] + v['df-intel'] + (v['df-agi']/2)
+            },
+            showWinRate: false
+        },
+        shoot: {
+            name: "シュート/キーパー",
+            at: {
+                label: "シュートAT",
+                inputs: [
+                    { id: "at-kick", label: "キック" },
+                    { id: "at-ctrl", label: "コントロール" }
+                ],
+                formula: (v) => v['at-kick'] + v['at-ctrl']
+            },
+            df: {
+                label: "キーパー(KP)", 
+                inputs: [
+                    { id: "df-press", label: "プレッシャー" },
+                    { id: "df-phys", label: "フィジカル" },
+                    { id: "df-agi", label: "アジリティ" }
+                ],
+                formula: (v) => (v['df-press']*2) + (v['df-phys']*3) + (v['df-agi']*4)
+            },
+            showWinRate: true
+        },
+        scramble: {
+            name: "スクランブル",
+            at: {
+                label: "スクランブルAT",
+                inputs: [
+                    { id: "at-intel", label: "インテリジェンス" },
+                    { id: "at-phys", label: "フィジカル" }
+                ],
+                formula: (v) => v['at-intel'] + v['at-phys']
+            },
+            df: {
+                label: "スクランブルDF",
+                inputs: [
+                    { id: "df-intel", label: "インテリジェンス" },
+                    { id: "df-press", label: "プレッシャー" }
+                ],
+                formula: (v) => v['df-intel'] + v['df-press']
+            },
+            showWinRate: true
+        },
+        direct: {
+            name: "直接入力",
+            at: { inputs: [], formula: null },
+            df: { inputs: [], formula: null },
+            showWinRate: true
+        }
+    };
+
+    let currentMode = 'focus';
+
+    function setMode(mode) {
+        currentMode = mode;
+        
+        // Update Buttons
+        document.querySelectorAll('.mode-selector .btn').forEach(b => {
+            b.classList.remove('active');
+            if (b.onclick.toString().includes(`setMode('${mode}')`)) {
+                b.classList.add('active');
+            }
+        });
+
+        // Render Inputs
+        renderInputs('at', MODES[mode].at);
+        renderInputs('df', MODES[mode].df);
+
+        // Toggle Direct Input visibility
+        const isDirect = mode === 'direct';
+        document.getElementById('at-direct-input').classList.toggle('hidden', !isDirect);
+        document.getElementById('df-direct-input').classList.toggle('hidden', !isDirect);
+        
+        // Toggle Tech Power Input visibility (Show only for non-direct modes)
+        document.getElementById('at-tech-power-input').classList.toggle('hidden', isDirect);
+        document.getElementById('df-tech-power-input').classList.toggle('hidden', isDirect);
+        
+        // Clear results
+        document.getElementById('result-area').style.display = 'none';
+        
+        // Logic to clear/highlight tech buttons? Maybe keep previous selection
+        // For now, just ensure tech power is updated based on current selections
+        updateTechPower('at');
+        updateTechPower('df');
+    }
+
+    function renderInputs(side, config) {
+        const container = document.getElementById(`inputs-${side}-stats`);
+        container.innerHTML = '';
+
+        if (!config.inputs) return;
+
+        config.inputs.forEach(input => {
+            const div = document.createElement('div');
+            div.className = 'input-group';
+            div.innerHTML = `
+                <label>${input.label}</label>
+                <input type="number" id="${input.id}" class="stat-input" oninput="updatePreview('${side}')">
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function getInputValue(id) {
+        const el = document.getElementById(id);
+        return el ? (parseFloat(el.value) || 0) : 0;
+    }
+
+    function calculateBasePower(side) {
+        if (currentMode === 'direct') {
+            return getInputValue(`${side}-real-value`);
+        }
+        
+        const config = MODES[currentMode][side];
+        if (!config || !config.formula) return 0;
+
+        const values = {};
+        config.inputs.forEach(i => {
+            values[i.id] = getInputValue(i.id);
+        });
+
+        // Calculate Stat Base
+        const statBase = Math.floor(config.formula(values));
+        
+        // Add Technique Power if applicable
+        const techPower = getInputValue(`${side}-tech-power`);
+        
+        // If tech power is 0 (not selected), it just adds 0.
+        return statBase + techPower;
+    }
+
+    function updatePreview(side) {
+        if (currentMode === 'direct') return;
+        // Preview now shows (Stat + Tech) before passive
+        const val = calculateBasePower(side);
+        document.getElementById(`${side}-calc-preview`).textContent = val;
+    }
+
+    function calculateRD() {
+        // 1. Get Base Values (Stat + Tech)
+        const baseAt = calculateBasePower('at');
+        const baseDf = calculateBasePower('df');
+
+        // 2. Apply Passives
+        const passiveAt = getInputValue('at-passive');
+        const passiveDf = getInputValue('df-passive');
+
+        // Formula: Total = Base * (1 + Passive%)
+        // Note: Base already includes Tech Power
+        const finalAt = baseAt * ((100 + passiveAt) / 100);
+        const finalDf = baseDf * ((100 + passiveDf) / 100);
+
+        // 3. Calculate RD
+        // Avoid division by zero
+        let rd = 0;
+        if (finalAt + finalDf > 0) {
+            rd = (Math.abs(finalAt - finalDf) / (finalAt + finalDf)) * 100;
+        }
+
+        // Render Inputs
+        document.getElementById('res-at-total').textContent = `${Math.floor(finalAt)} (素点:${baseAt} x ${(100+passiveAt)/100})`;
+        document.getElementById('res-df-total').textContent = `${Math.floor(finalDf)} (素点:${baseDf} x ${(100+passiveDf)/100})`;
+        document.getElementById('res-rd').textContent = rd.toFixed(2); // Match image precision
+
+        // Win Rate Logic
+        const showWinRate = MODES[currentMode].showWinRate;
+        const winRateEl = document.getElementById('win-rate-container');
+        
+        if (showWinRate) {
+            winRateEl.style.display = 'block';
+            let winRate = 0;
+            // ... (Keep existing Win Rate Logic)
+            if (rd >= 15) {
+                if (finalAt > finalDf) winRate = 100;
+                else winRate = 0;
+            } else {
+                 const isAtHigher = finalAt >= finalDf;
+                 if (isAtHigher) {
+                     if (rd < 14.6) {
+                        const slope = (55 - 40) / 14.6;
+                        winRate = 40 + (rd * slope);
+                     } else {
+                        winRate = 55 + ((rd - 14.6) / (15 - 14.6)) * (100 - 55);
+                        if (winRate > 100) winRate = 100;
+                     }
+                 } else {
+                     winRate = 40 - (rd * (40/15));
+                     if (winRate < 0) winRate = 0;
+                 }
+            }
+            
+            document.getElementById('res-win-rate').textContent = `AT側推定勝率: ${Math.round(winRate)}%`;
+            
+            let judge = "";
+            if (winRate >= 100) judge = "完全勝利";
+            else if (winRate >= 60) judge = "有利";
+            else if (winRate >= 40) judge = "互角〜微有利";
+            else if (winRate > 0) judge = "不利";
+            else judge = "敗北確定";
+            document.getElementById('res-judgment').textContent = judge;
+            
+        } else {
+            winRateEl.style.display = 'none';
+        }
+
+        document.getElementById('result-area').style.display = 'block';
+    }
+
+    // Initialize
+    initTechButtons('at');
+    initTechButtons('df');
+    setMode('focus');
+    </script>
+  </body>
+</html>
