@@ -303,11 +303,11 @@
     <script>
       // Tech Power Logic provided by user
     const TECH_DATA = {
-        30: { 1:115, 2:115, 3:115, 4:115, 5:115, 6:115 }, // Assuming fixed based on formula condition
+        30: { 1:115, 2:115, 3:115, 4:115, 5:115, 6:115 }, 
         50: { 1:175, 2:192, 3:210, 4:227, 5:245, 6:262 },
         60: { 1:210, 2:231, 3:252, 4:273, 5:294, 6:315 },
         70: { 1:255, 2:280, 3:306, 4:331, 5:357, 6:382 },
-        85: { 1:312, 2:343, 3:374, 4:405, 5:436, 6:468 },
+        85: { 1:312, 2:343, 3:375, 4:405, 5:436, 6:468 }, // V3 updated to 375
         100: { 1:370, 2:407, 3:444, 4:481, 5:518, 6:555 }
     };
     
@@ -338,10 +338,8 @@
             evoContainer.appendChild(btn);
         });
 
-        // Set initial active state for default values (0 base, 1 evo)
-        // For base, if 0 is not in the list, none will be active initially.
-        // For evo, '無' (1) should be active by default.
-        const initialEvoBtn = evoContainer.children[0]; // Assuming 1 is the first button
+        // Set initial active state for default values
+        const initialEvoBtn = evoContainer.children[0]; 
         if (initialEvoBtn) {
             initialEvoBtn.classList.add('active');
         }
@@ -548,19 +546,19 @@
         const baseDf = calculateBasePower('df');
 
         // 2. Apply Passives
+        // If input is empty/0, it treats as 0% boost (x1.0 total)
         const passiveAt = getInputValue('at-passive');
         const passiveDf = getInputValue('df-passive');
 
         // Formula: Total = Base * (1 + Passive%)
-        // Note: Base already includes Tech Power
         const finalAt = baseAt * ((100 + passiveAt) / 100);
         const finalDf = baseDf * ((100 + passiveDf) / 100);
 
         // 3. Calculate RD
-        // Avoid division by zero
+        // Allow negative RD if DF > AT
         let rd = 0;
         if (finalAt + finalDf > 0) {
-            rd = (Math.abs(finalAt - finalDf) / (finalAt + finalDf)) * 100;
+            rd = ((finalAt - finalDf) / (finalAt + finalDf)) * 100;
         }
 
         // Render Inputs
