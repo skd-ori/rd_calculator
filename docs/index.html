@@ -182,17 +182,19 @@
   </head>
   <body>
     <div class="container">
-      <h1>RD計算機 (Beta)</h1>
+      <h1>RD計算機 Ver1.0.3</h1>
 
       <div class="mode-selector">
         <button class="btn active" onclick="setMode('focus')">
           フォーカス AT/DF
         </button>
+        <!-- Unused modes hidden
         <button class="btn" onclick="setMode('shoot')">
           シュート/キーパー
         </button>
         <button class="btn" onclick="setMode('scramble')">スクランブル</button>
         <button class="btn" onclick="setMode('direct')">実数値直接入力</button>
+        -->
       </div>
 
       <div class="calc-area">
@@ -320,12 +322,13 @@
         const baseContainer = document.getElementById(`${side}-base-btns`);
         const evoContainer = document.getElementById(`${side}-evo-btns`);
         
-        // Base Buttons
-        [30, 50, 60, 70, 85, 100].forEach(base => {
+        // Base Buttons (Added 0 for "No Tech")
+        [0, 30, 50, 60, 70, 85, 100].forEach(base => {
             const btn = document.createElement('div');
             btn.className = 'tech-btn';
-            btn.textContent = base;
+            btn.textContent = base === 0 ? "技なし" : base;
             btn.onclick = () => selectTechBase(side, base, btn);
+            if (base === 0) btn.classList.add('active'); // Default to No Tech
             baseContainer.appendChild(btn);
         });
 
@@ -343,6 +346,23 @@
         if (initialEvoBtn) {
             initialEvoBtn.classList.add('active');
         }
+        
+        // Initial state update
+        updateTechVisibility(side, 0);
+    }
+
+    function updateTechVisibility(side, base) {
+        const evoContainer = document.getElementById(`${side}-evo-btns`);
+        // If "No Tech" (0) is selected, maybe hide or dim evo buttons?
+        // For now, let's just leave them as is but they won't add power since base is 0.
+        // Actually, let's visually dim them if base is 0.
+        if (base === 0) {
+            evoContainer.style.opacity = '0.5';
+            evoContainer.style.pointerEvents = 'none';
+        } else {
+            evoContainer.style.opacity = '1';
+            evoContainer.style.pointerEvents = 'auto';
+        }
     }
 
     function selectTechBase(side, base, btnEl) {
@@ -353,6 +373,7 @@
         Array.from(parent.children).forEach(c => c.classList.remove('active'));
         btnEl.classList.add('active');
 
+        updateTechVisibility(side, base);
         updateTechPower(side);
     }
 
@@ -510,6 +531,15 @@
         return el ? (parseFloat(el.value) || 0) : 0;
     }
 
+    function applySpecialRounding(value) {
+        const floor = Math.floor(value);
+        const decimal = value - floor;
+        if (decimal > 0.95) {
+            return Math.ceil(value);
+        }
+        return Math.floor(value);
+    }
+
     function calculateBasePower(side) {
         if (currentMode === 'direct') {
             return getInputValue(`${side}-real-value`);
@@ -524,12 +554,12 @@
         });
 
         // Calculate Stat Base
-        const statBase = Math.floor(config.formula(values));
+        const rawStat = config.formula(values);
+        const statBase = applySpecialRounding(rawStat);
         
         // Add Technique Power if applicable
         const techPower = getInputValue(`${side}-tech-power`);
         
-        // If tech power is 0 (not selected), it just adds 0.
         return statBase + techPower;
     }
 
@@ -551,8 +581,12 @@
         const passiveDf = getInputValue('df-passive');
 
         // Formula: Total = Base * (1 + Passive%)
-        const finalAt = baseAt * ((100 + passiveAt) / 100);
-        const finalDf = baseDf * ((100 + passiveDf) / 100);
+        const rawFinalAt = baseAt * ((100 + passiveAt) / 100);
+        const rawFinalDf = baseDf * ((100 + passiveDf) / 100);
+        
+        // Apply Special Rounding to Final Values
+        const finalAt = applySpecialRounding(rawFinalAt);
+        const finalDf = applySpecialRounding(rawFinalDf);
 
         // 3. Calculate RD
         // Allow negative RD if DF > AT
@@ -562,49 +596,112 @@
         }
 
         // Render Inputs
-        document.getElementById('res-at-total').textContent = `${Math.floor(finalAt)} (素点:${baseAt} x ${(100+passiveAt)/100})`;
-        document.getElementById('res-df-total').textContent = `${Math.floor(finalDf)} (素点:${baseDf} x ${(100+passiveDf)/100})`;
-        document.getElementById('res-rd').textContent = rd.toFixed(2); // Match image precision
+        // Show raw base and passive multiplier in parens
+        document.getElementById('res-at-total').textContent = `${finalAt} (素点:${baseAt} x ${(100+passiveAt)/100})`;
+        document.getElementById('res-df-total').textContent = `${finalDf} (素点:${baseDf} x ${(100+passiveDf)/100})`;
+        document.getElementById('res-rd').textContent = rd.toFixed(2) + "%";
 
-        // Win Rate Logic
-        const showWinRate = MODES[currentMode].showWinRate;
-        const winRateEl = document.getElementById('win-rate-container');
+        // 4. Win Rate / Judgment Logic
+        const resContainer = document.getElementById('win-rate-container');
+        resContainer.innerHTML = ''; // Clear previous content
+
+        // Determine Battle Logic based on Tech Usage
+        // If EITHER side uses a move (Tech Power > 0), use Tech Battle Logic.
+        // If BOTH sides use "No Tech" (Tech Power == 0), use Focus Battle Logic.
         
-        if (showWinRate) {
-            winRateEl.style.display = 'block';
-            let winRate = 0;
-            // ... (Keep existing Win Rate Logic)
-            if (rd >= 15) {
-                if (finalAt > finalDf) winRate = 100;
-                else winRate = 0;
-            } else {
-                 const isAtHigher = finalAt >= finalDf;
-                 if (isAtHigher) {
-                     if (rd < 14.6) {
-                        const slope = (55 - 40) / 14.6;
-                        winRate = 40 + (rd * slope);
-                     } else {
-                        winRate = 55 + ((rd - 14.6) / (15 - 14.6)) * (100 - 55);
-                        if (winRate > 100) winRate = 100;
-                     }
-                 } else {
-                     winRate = 40 - (rd * (40/15));
-                     if (winRate < 0) winRate = 0;
-                 }
+        const atTechBase = parseInt(document.getElementById('at-base-val').value) || 0;
+        const dfTechBase = parseInt(document.getElementById('df-base-val').value) || 0;
+        const isTechBattle = (atTechBase > 0 || dfTechBase > 0);
+
+        if (!isTechBattle) {
+            // === Focus Battle Logic (No Tech) ===
+            // Formula: Rate = 30 + (20 * x) + (10 * RD)
+            // x: 0 (Root), 0.5 (Center), 1 (Tip)
+            
+            function getBreakRate(rdVal, x) {
+                const rate = 30 + (20 * x) + (10 * rdVal);
+                return Math.max(0, Math.min(100, rate)); // Clamp 0-100
             }
-            
-            document.getElementById('res-win-rate').textContent = `AT側推定勝率: ${Math.round(winRate)}%`;
-            
-            let judge = "";
-            if (winRate >= 100) judge = "完全勝利";
-            else if (winRate >= 60) judge = "有利";
-            else if (winRate >= 40) judge = "互角〜微有利";
-            else if (winRate > 0) judge = "不利";
-            else judge = "敗北確定";
-            document.getElementById('res-judgment').textContent = judge;
+
+            const rateRoot = getBreakRate(rd, 0.0);
+            const rateCenter = getBreakRate(rd, 0.5);
+            const rateTip = getBreakRate(rd, 1.0);
+
+            // Helper to determine color
+            function getRateStyle(rate) {
+                if (rate >= 100) return "color: #dc2626;"; // Red (Win)
+                if (rate <= 0) return "color: #2563eb;";   // Blue (Lose)
+                return "color: #1f2937;"; // Default black/gray
+            }
+
+            const html = `
+                <div style="margin-top:12px; border-top:1px solid #e5e7eb; padding-top:12px;">
+                    <div style="font-weight:bold; margin-bottom:8px; text-align:center;">フォーカス判定予測 (技なし)</div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:0.95rem; max-width: 300px; margin: 0 auto;">
+                        
+                        <div style="text-align:right; color:#4b5563;">手の付け根</div> 
+                        <div style="font-weight:bold; ${getRateStyle(rateRoot)}">${Math.round(rateRoot)}%</div>
+
+                        <div style="text-align:right; color:#4b5563;">手の真ん中</div> 
+                        <div style="font-weight:bold; ${getRateStyle(rateCenter)}">${Math.round(rateCenter)}%</div>
+
+                        <div style="text-align:right; color:#4b5563;">指先</div> 
+                        <div style="font-weight:bold; ${getRateStyle(rateTip)}">${Math.round(rateTip)}%</div>
+
+                    </div>
+                    <div style="font-size:0.8rem; color:#6b7280; margin-top:12px; text-align:center;">
+                        ※RD+1%ごとに突破率+10%<br>
+                        ※先端に行くほど突破率+20%
+                    </div>
+                </div>
+            `;
+            resContainer.innerHTML = html;
             
         } else {
-            winRateEl.style.display = 'none';
+            // === Tech Battle Logic (Step Function) ===
+            // RD > +20: 100%
+            // +10 < RD <= +20: 75%
+            // -10 <= RD <= +10: 50%
+            // -20 <= RD < -10: 25%
+            // RD < -20: 0%
+
+            let winRate = 0;
+            let label = "";
+            let labelColor = "";
+
+            if (rd > 20) {
+                winRate = 100;
+                label = "勝利確定 (100%)";
+                labelColor = "#dc2626"; // Red
+            } else if (rd > 10) {
+                winRate = 75;
+                label = "有利 (75%)";
+                labelColor = "#dc2626";
+            } else if (rd >= -10) {
+                winRate = 50;
+                label = "互角 (50%)";
+                labelColor = "#d97706"; // Orange/Yellow
+            } else if (rd >= -20) {
+                winRate = 25;
+                label = "不利 (25%)";
+                labelColor = "#2563eb"; // Blue
+            } else {
+                winRate = 0;
+                label = "敗北確定 (0%)";
+                labelColor = "#2563eb";
+            }
+
+            const html = `
+                 <div class="win-rate">AT勝率: ${winRate}%</div>
+                 <div style="text-align: center; margin-top: 8px; font-weight:bold; font-size:1.2rem; color: ${labelColor};">${label}</div>
+                 <div style="font-size:0.8rem; color:#6b7280; margin-top:12px; text-align:center; border-top: 1px dashed #e5e7eb; padding-top: 8px;">
+                    <div>技バトル判定</div>
+                    <div style="margin-top:4px;">±10%以内: 50%</div>
+                    <div>±20%以内: 75% / 25%</div>
+                    <div>それ以上: 100% / 0%</div>
+                 </div>
+            `;
+            resContainer.innerHTML = html;
         }
 
         document.getElementById('result-area').style.display = 'block';
